@@ -64,7 +64,9 @@ def playOneGame(game, snake0, snake1):
         rewards[0].append(reward0)
         rewards[1].append(reward1)
 
-        if length > 10000:
+        if length > 256:
+            rewards[0][-1] = -1
+            rewards[1][-1] = -1
             break
         
     
@@ -72,17 +74,18 @@ def playOneGame(game, snake0, snake1):
 
 def train():
     options = [[1,0],[0,1],[-1,0],[0,-1]]
-    games_per_update = 128
-    competitionGames = 100
-    replayBufferLenth = 1024*32
-    gamma = 1.0
+    games_per_update = 1024
+    competitionGames = 128
+    replayBufferLenth = 1024*64
+    gamma = 0.99
+    eps= 0.1
 
-    snake0 = Policy(epsilon=0.1)
+    snake0 = Policy(epsilon=eps)
     snake1 = Policy()
+    randomSnake = RandomOponant()
     #snake1s = [RandomOponant(), RandomOponant(), RandomOponant()] 
     game = SnakeGame(GUI=False)
     modelIndex = len(list(os.listdir('models/'))) 
-    bestWinrate = 0
     losses = []
     gameLengths = []
     wintypes= []
@@ -99,37 +102,35 @@ def train():
 
 
     while True:
-        replayMemory = [[], [], []]
 
         ### Play the model Against it'self
         for _ in range(games_per_update):
-            snake0.epsilon = 0.1 
+            snake0.epsilon = eps
             #rewards, states, actions, wintype, length =  playOneGame(game, snake0, randomOpp)
             rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake0)
-            
-            if rewards[0][-1] > rewards[1][-1]: wins.append(1)
-            elif rewards[1][-1] > rewards[0][-1]: wins.append(0) 
 
+            k = len(rewards[0])
             for n in range(2):
-                for x in range(len(rewards[n])):
-                    replayMemory[0].append(states[n][x])
-                    replayMemory[1].append(actions[n][x])
-                    if x < len(rewards[n]) - 1:
-                        replayMemory[2].append(rewards[n][x] + gamma*predictions[n][x+1])
-                    else:
-                        replayMemory[2].append(rewards[n][x])
+                last = 0
+                for x in range(k):
+                    replayMemory[0].append(states[n][k-x-1])
+                    replayMemory[1].append(actions[n][k-x-1])
+                    replayMemory[2].append(rewards[n][k-x-1] + gamma*last)
+                    last = rewards[n][k-x-1] + gamma*last
+                    #if x < len(rewards[n]) - 1:
+                    #    replayMemory[2].append(rewards[n][x] + gamma*predictions[n][x+1])
+                    #else:
+                    #    replayMemory[2].append(rewards[n][k-x-1])
 
             print("Done: " + str(_) +    "                                                  ", end='\r')
 
         # Train the model on the experince
 
-        replayMemory[0] = replayMemory[0][-replayBufferLenth:] 
-        replayMemory[1] = replayMemory[1][-replayBufferLenth:] 
-        replayMemory[2] = replayMemory[2][-replayBufferLenth:] 
+        #replayMemory[0] = replayMemory[0][-replayBufferLenth:] 
+        #replayMemory[1] = replayMemory[1][-replayBufferLenth:] 
+        #replayMemory[2] = replayMemory[2][-replayBufferLenth:] 
 
-        for x in range(games_per_update):
-            loss = snake0.trainModelPredictor(replayMemory[0], replayMemory[1], replayMemory[2])
-            losses.append(loss)
+        snake0.trainModelPredictor(replayMemory[0], replayMemory[1], replayMemory[2])
 
         for x in range(competitionGames):
             snake0.epsilon = 0.0
@@ -143,28 +144,31 @@ def train():
             else:
                 wintypes.append(0)
             gameLengths.append(length)
-            print("Done Competition Games: " + str(_) +    "                                                  ", end='\r')
+            print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
 
-        meanLosses = np.mean(np.array(losses[-100:]))
-        meanLength = np.mean(np.array(gameLengths[-100:]))
-        meanWinType = np.mean(np.array(wintypes[-100:]))
-        winRate = np.mean(np.array(wins[-100:]))
+        meanLength = np.mean(np.array(gameLengths))
+        meanWinType = np.mean(np.array(wintypes))
+        winRate = np.mean(np.array(wins))
 
-        print("# Games:" + str(len(gameLengths))+ " # Non-tie Games:" + str(len(wins)) + " Winrate:" + str(winRate)[0:5] + " Avg Loss:" + str(meanLosses)[0:5] + " Avg Length:" + str(meanLength)[0:5] + " Cornering Rate:" + str(meanWinType)[0:5] +   "                                                  ")
+        print("# Games:" + str(len(gameLengths))+ " # Non-tie Games:" + str(len(wins)) + " Winrate:" + str(winRate)[0:5] + " Avg Length:" + str(meanLength)[0:5] + " Cornering Rate:" + str(meanWinType)[0:5] +   "                                                  ")
 
 
         #if winRate > bestWinrate and len(wins) > 100:
         #    bestWinrate = winRate
-        if winRate > 0.55:
+        snake_names = os.listdir('models/')
+        if winRate >= 0.55:
+            # Flush memory 
+            replayMemory = [[], [], []]
             print("Saving good Model")
             snake0.model.save('models/bestModel_rev' + str(modelIndex) + '.h5')
             modelIndex+= 1
+        elif len (snake_names) > 0:
+            snake0.model.load_weights('models/' + snake_names[-1])
 
-        snake_names = os.listdir('models/')
+
         if len (snake_names) > 0:
             snake1.model.load_weights('models/' + snake_names[-1])
 
-        losses = []
         gameLengths = []
         wintypes= []
         wins = []

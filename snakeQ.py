@@ -74,7 +74,7 @@ class SnakeGame():
         self.rollString=""
         if self.GUI:
             self.root=Tk()                   #Window defined
-            self.root.title("SNAKE -> You play as snake head 'A'")         #Title given
+            self.root.title("Modifed Battle Snake")         #Title given
             self.colour={1:"deep sky blue", 0:"lawn green"}
             self.b = []
             for x in range(self.boardSize):
@@ -124,8 +124,8 @@ class SnakeGame():
 
         self.state = np.zeros(shape=(self.boardSize,self.boardSize,self.channels))
 
-        self.snake0 = [[self.boardSize//2,1],[self.boardSize//2,0]]
-        self.snake1 = [[self.boardSize//2,self.boardSize-2],[self.boardSize//2,self.boardSize-1]]
+        self.snake0 = [[self.boardSize//2,1],[self.boardSize//2,0],[self.boardSize//2+1,0],[self.boardSize//2+2,0]]
+        self.snake1 = [[self.boardSize//2,self.boardSize-2],[self.boardSize//2,self.boardSize-1],[self.boardSize//2-1,self.boardSize-1],[self.boardSize//2-2,self.boardSize-1]]
 
         self.updateState()
 
@@ -175,21 +175,21 @@ class SnakeGame():
         valids0 = checkSnake(self.state,self.snake0)
         valids1 = checkSnake(self.state,self.snake1)
         
-        invalid0 = []
-        invalid1 = []
-        for valid0 in valids0:
-            for valid1 in valids1:
-                if self.snake0[0][0] + valid0[0] == self.snake1[0][0] + valid1[0]:
-                    if self.snake0[0][1] + valid0[1] == self.snake1[0][1] + valid1[1]:
-                        invalid0.append(valid0)
-                        invalid1.append(valid1)
-        
-        if len(self.snake0) <= len(self.snake1):
-            if len(valids0) != len(invalid0):
-                valids0 = [x for x in valids0 if x not in invalid0]
-        elif len(self.snake1) <= len(self.snake0):
-            if len(valids1) != len(invalid1):
-                valids1 = [x for x in valids1 if x not in invalid1]
+        #invalid0 = []
+        #invalid1 = []
+        #for valid0 in valids0:
+        #    for valid1 in valids1:
+        #        if self.snake0[0][0] + valid0[0] == self.snake1[0][0] + valid1[0]:
+        #            if self.snake0[0][1] + valid0[1] == self.snake1[0][1] + valid1[1]:
+        #                invalid0.append(valid0)
+        #                invalid1.append(valid1)
+        #
+        #if len(self.snake0) <= len(self.snake1):
+        #    if len(valids0) != len(invalid0):
+        #        valids0 = [x for x in valids0 if x not in invalid0]
+        #elif len(self.snake1) <= len(self.snake0):
+        #    if len(valids1) != len(invalid1):
+        #        valids1 = [x for x in valids1 if x not in invalid1]
 
 
         valids = [valids0,valids1]
@@ -199,11 +199,13 @@ class SnakeGame():
         return valids
 
     def step(self, actions):
+        if self.GUI:
+            self.root.title("Modifed Battle Snake")
         valids = self.checkValidActions()
         terminal = False
 
-        reward = 0
-        rewardopp = 0
+        reward = -0.1
+        rewardopp = -0.1
 
         # move heads        
         self.snake0.insert(0, [self.snake0[0][0]+actions[0][0],self.snake0[0][1]+actions[0][1]])
@@ -214,12 +216,12 @@ class SnakeGame():
             self.snake0.pop()
         else:
             self.state[self.snake0[0][0],self.snake0[0][1],self.food] = 0
-            reward = 0
+            reward = 0.75
         if not self.state[self.snake1[0][0],self.snake1[0][1],self.food] == 1:
             self.snake1.pop()
         else:
             self.state[self.snake1[0][0],self.snake1[0][1],self.food] = 0
-            rewardopp = 0
+            rewardopp = 0.75
 
         snake0_dead = self.snake0[0] in self.snake1
         snake1_dead = self.snake1[0] in self.snake0
@@ -247,8 +249,8 @@ class SnakeGame():
             reward = 1
             rewardopp = -1
         if snake0_dead and snake1_dead: 
-            reward = 0
-            rewardopp = 0
+            reward = -0.75
+            rewardopp = -0.75
 
         if terminal and (len(valids[0])==0 or len(valids[1])==0):
             wintype = 'cornered'
@@ -261,10 +263,13 @@ class SnakeGame():
             if self.GUI:
                 print("Game over!")
                 if not snake0_dead:
+                    self.root.title("SNAKE 'A' WINS!")
                     print("SNAKE 'A' WINS!")
                 if not snake1_dead:
+                    self.root.title("SNAKE 'B' WINS!")
                     print("SNAKE 'B' WINS")
                 if snake0_dead and snake1_dead:
+                    self.root.title("Draw!")
                     print("DRAW!")
                 for x in range(4):
                     self.waithere()
@@ -291,9 +296,9 @@ class SnakeGame():
 
     def button(self, frame, color=None):#Function to define a button
         if color == None:
-            button_=Button(frame,padx=1,bg="papaya whip",width=3,text="   ",font=('arial',60,'bold'),relief="sunken",bd=10)
+            button_=Button(frame,padx=1,bg="papaya whip",width=5,height=1,text="   ",font=('arial',80,'bold'),relief="sunken",bd=5)
         else:
-            button_=Button(frame,padx=1,bg=color,width=3,text="   ",font=('arial',60,'bold'),relief="sunken",bd=10)
+            button_=Button(frame,padx=1,bg=color,width=5,height=1,text="   ",font=('arial',80,'bold'),relief="sunken",bd=5)
         return button_
     
     def click(self,row,col):
@@ -305,8 +310,13 @@ class SnakeGame():
             if not self.player1 is None and not self.player2 is None:
                 while True:
                     self.waithere()
-                    action0, _ = self.player1.getAction(self.state, self.checkValidActions()[0])
-                    action1, _ = self.player2.getAction(secondState, self.checkValidActions()[1])
+                    ok_moves = self.checkValidActions()
+                    #print(ok_moves)
+                    #print("now getting actions")
+                    action0, _ = self.player1.getAction(self.state, ok_moves[0])
+                    action1, _ = self.player2.getAction(secondState, ok_moves[1])
+
+                    #print(action0, action1)
                     self.step([action0,action1])
             else:
                 actionmodel, _ = self.player1.getAction(secondState, self.checkValidActions()[1])
@@ -314,13 +324,19 @@ class SnakeGame():
                 self.waithere()
     
 if __name__ == '__main__':
-    #opp = Policy(0.05)
-    #opp.model = load_model('models/bestModel_rev3.h5')
-    #opp.compile()
 
-    #test = SnakeGame(animationTime=250, player2=RandomOponant(), player1=RandomOponant())
-    test = SnakeGame(animationTime=1000)
-    test.checkValidActions()
+    opp = Policy(0.0)
+    opp.model = load_model('models/bestModel_rev0.h5')
+    opp.compile()
+
+    opp1 = Policy(0.0)
+    opp1.model = load_model('models/bestModel_rev0.h5')
+    opp1.compile()
+
+    test = SnakeGame(animationTime=100, player2=RandomOponant(), player1=opp)
+    #test = SnakeGame(animationTime=750, player2=RandomOponant(), player1=RandomOponant())
+    #test = SnakeGame(animationTime=1000)
+    #test.checkValidActions()
 
 
 '''
