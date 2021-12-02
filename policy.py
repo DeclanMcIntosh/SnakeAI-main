@@ -72,10 +72,10 @@ def Snake_Model_DQN():
 
     def residual(x, channels):
         x1 = Conv2D(channels, 3, padding='same')(x)
-        x1 = BatchNormalization()(x1)
+        #x1 = BatchNormalization()(x1)
         x1 = ReLU()(x1)     
         x1 = Conv2D(channels, 3, padding='same')(x1)
-        x1 = BatchNormalization()(x1)     
+        #x1 = BatchNormalization()(x1)     
         x = Add()([x,x1])
         x = ReLU()(x)
         return x
@@ -84,7 +84,7 @@ def Snake_Model_DQN():
     input_ = Input(shape=(9,9,8))
 
     x = Conv2D(128,1,padding='same')(input_)
-    x = BatchNormalization()(x)
+    #x = BatchNormalization()(x)
     x = ReLU()(x)     
     x = residual(x, 128)
     x = residual(x, 128)
@@ -139,6 +139,13 @@ class Policy():
 
         NewInput = np.rot90(NewInput,options.index(action), axes=(0,1))
 
+        for x in range(options.index(action)):
+            temp = np.copy(NewInput)
+            NewInput[:,:,2] = temp[:,:,5]
+            NewInput[:,:,3] = temp[:,:,2]
+            NewInput[:,:,4] = temp[:,:,3]
+            NewInput[:,:,5] = temp[:,:,4]
+
         #print(input_mod[:,:,0])
 
         if np.isnan(np.sum(NewInput)):
@@ -158,9 +165,13 @@ class Policy():
 
         input_mods = [np.expand_dims(self.createModelInput(state, valids[0]),axis=0)]
 
-        for action in valids[1:]:
-            
+        for action in valids[:]:
+            k = self.createModelInput(state, action)
             input_mods.append(np.expand_dims(self.createModelInput(state, action),axis=0))
+
+            for x in range(8):
+                print(x)
+                print(k[:,:,x])
 
         input_mods = np.concatenate(input_mods, axis=0)
             

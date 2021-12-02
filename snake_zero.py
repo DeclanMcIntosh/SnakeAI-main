@@ -39,6 +39,10 @@ def playOneGame(game, snake0, snake1):
 
         #t0 = time.time()
 
+        for x in range(8):
+            print(x)
+            print(state0[:,:,x])
+
         action0, prediction0 = snake0.getAction(state0, valids[0])
         action1, prediction1 = snake1.getAction(state1, valids[1])
         
