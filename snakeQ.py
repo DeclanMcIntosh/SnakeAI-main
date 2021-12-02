@@ -1,4 +1,3 @@
-from os import openpty
 from tkinter import *
 from tkinter import messagebox
 #import Tkinter as tk
