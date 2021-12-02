@@ -176,13 +176,14 @@ class Policy():
 
         #print(str((time.time()-t0)))
 
-        return action, prediction
+        #return action, prediction
 
         
 
         #weighted roullet wheel of choices
-        #estimates = [x/sum(estimates) for x in estimates]
-        #return r.choices(valids, k=1, weights=estimates)[0]
+        estimates = estimates + 1e-6
+        estimates = estimates/np.sum(estimates)
+        return r.choices(valids, k=1, weights=estimates)[0],  prediction
 
     def compile(self):
         self.model.compile(loss='mse', optimizer=SGD(learning_rate=1e-3, momentum=0.9))

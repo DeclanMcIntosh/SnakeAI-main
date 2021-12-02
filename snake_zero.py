@@ -97,7 +97,7 @@ def compete(snake0, snake1, game, competitionGames, string_):
 
 def train():
     options = [[1,0],[0,1],[-1,0],[0,-1]]
-    games_per_update = 512*4
+    games_per_update = 256
     competitionGames = 400
     replayBufferLenth = 1024*64*8
     gamma = 1
