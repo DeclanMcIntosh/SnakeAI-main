@@ -47,7 +47,7 @@ def switchAgentContext(state0, game):
 
 
 class SnakeGame():
-    def __init__(self,GUI=True, UserPlayable=True, player1=RandomOponant(), player2=None, animationTime=1000):
+    def __init__(self,GUI=True, UserPlayable=True, player1=RandomOponant(), player2=None, animationTime=1000, rewardscheme = [0,0,0,1]):
         ###############   Main Program #################
         self.GUI=GUI
         self.UserPlayable=UserPlayable
@@ -58,6 +58,11 @@ class SnakeGame():
         self.boardSize = 5
         self.channels = 8
 
+        self.stepReward = rewardscheme[0]
+        self.foodReward = rewardscheme[1]
+        self.lossReward = rewardscheme[2]
+        self.winsReward = rewardscheme[3]
+
         self.head0 = 0
         self.head1 = 1
         self.up = 2
@@ -66,6 +71,8 @@ class SnakeGame():
         self.left = 5
         self.food = 6
         self.bigger = 7
+
+        self.steps = 0
 
         self.state = np.zeros(shape=(self.boardSize,self.boardSize,self.channels))
 
@@ -121,6 +128,8 @@ class SnakeGame():
             self.state[proposed_food[0], proposed_food[1], 6] = 1
 
     def resetGame(self):
+
+        self.steps = 0
 
         self.state = np.zeros(shape=(self.boardSize,self.boardSize,self.channels))
 
@@ -199,13 +208,15 @@ class SnakeGame():
         return valids
 
     def step(self, actions):
+
+        self.steps+=1
         if self.GUI:
             self.root.title("Modifed Battle Snake")
         valids = self.checkValidActions()
         terminal = False
 
-        reward = 0
-        rewardopp = 0
+        reward = self.stepReward
+        rewardopp = self.stepReward
 
         # move heads        
         self.snake0.insert(0, [self.snake0[0][0]+actions[0][0],self.snake0[0][1]+actions[0][1]])
@@ -216,12 +227,12 @@ class SnakeGame():
             self.snake0.pop()
         else:
             self.state[self.snake0[0][0],self.snake0[0][1],self.food] = 0
-            reward = 0
+            reward = self.foodReward
         if not self.state[self.snake1[0][0],self.snake1[0][1],self.food] == 1:
             self.snake1.pop()
         else:
             self.state[self.snake1[0][0],self.snake1[0][1],self.food] = 0
-            rewardopp = 0
+            rewardopp = self.foodReward
 
         snake0_dead = self.snake0[0] in self.snake1
         snake1_dead = self.snake1[0] in self.snake0
@@ -240,17 +251,21 @@ class SnakeGame():
         if len(valids[0]) == 0:   snake0_dead = True
         if len(valids[1]) == 0:  snake1_dead = True
 
+        if self.steps > 128:
+            snake0_dead = True
+            snake1_dead = True
+
         terminal = snake0_dead or snake1_dead
 
         if snake0_dead and not snake1_dead: 
-            reward = 0
-            rewardopp = 1
+            reward = self.lossReward
+            rewardopp = self.winsReward
         if snake1_dead and not snake0_dead: 
-            reward = 1
-            rewardopp = 0
+            reward = self.winsReward
+            rewardopp = self.lossReward
         if snake0_dead and snake1_dead: 
-            reward = 0
-            rewardopp = 0
+            reward = self.lossReward
+            rewardopp = self.lossReward
 
         if terminal and (len(valids[0])==0 or len(valids[1])==0):
             wintype = 'cornered'

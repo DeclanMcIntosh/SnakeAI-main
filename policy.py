@@ -24,11 +24,53 @@ def Snake_Model():
 
     def residual(x, channels):
         x1 = Conv2D(channels, 3, padding='same')(x)
-        #x1 = BatchNormalization()(x1)
+        x1 = BatchNormalization()(x1)
         x1 = ReLU()(x1)     
         x1 = Conv2D(channels, 3, padding='same')(x1)
-        #x1 = BatchNormalization()(x1)
-        x1 = ReLU()(x1)       
+        x1 = BatchNormalization()(x1)     
+        x = Add()([x,x1])
+        x = ReLU()(x)
+        return x
+
+
+    input_ = Input(shape=(9,9,8))
+
+    x = Conv2D(256,1,padding='same')(input_)
+    x = BatchNormalization()(x)
+    x = ReLU()(x)     
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+
+    x1 = Conv2D(2,1,padding='same')(x)
+    x1 = Flatten()(x1)
+    x1 = Dense(1024)(x1)
+    x1 = ReLU()(x1) 
+    x1 = Dense(1)(x1)
+    x1 = Activation('sigmoid')(x1) # critic
+
+    #x2 = Conv2D(2,1,padding='same')(x)
+    #x2 = Flatten()(x2)
+    #x2 = Dense(128)(x2)
+    #x2 = ReLU()(x2) 
+    #x2 = Dense(1)(x2)
+    #x2 = Activation('sigmoid')(x2) # actor
+
+    model = Model(inputs=input_,outputs=x1)
+    
+    model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=1e-3))
+    return model
+
+def Snake_Model_DQN():
+
+    def residual(x, channels):
+        x1 = Conv2D(channels, 3, padding='same')(x)
+        x1 = BatchNormalization()(x1)
+        x1 = ReLU()(x1)     
+        x1 = Conv2D(channels, 3, padding='same')(x1)
+        x1 = BatchNormalization()(x1)     
         x = Add()([x,x1])
         x = ReLU()(x)
         return x
@@ -37,7 +79,7 @@ def Snake_Model():
     input_ = Input(shape=(9,9,8))
 
     x = Conv2D(128,1,padding='same')(input_)
-    #x = BatchNormalization()(x)
+    x = BatchNormalization()(x)
     x = ReLU()(x)     
     x = residual(x, 128)
     x = residual(x, 128)
@@ -63,11 +105,11 @@ def Snake_Model():
     return model
 
 class Policy():
-    def __init__(self, epsilon=0.0, gamma=0.95, board_size=5):
+    def __init__(self, epsilon=0.0, gamma=0.95, board_size=5, snakeModel=Snake_Model):
         self.epsilon = epsilon
         self.gamma = gamma
         self.board_size = board_size
-        self.model = Snake_Model()
+        self.model = snakeModel()
 
         self.historyStates = []
         self.historyActions = []

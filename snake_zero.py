@@ -64,10 +64,6 @@ def playOneGame(game, snake0, snake1):
 
         rewards[0].append(reward0)
         rewards[1].append(reward1)
-
-        if length > 256:
-            rewards[0][-1] = -1
-            rewards[1][-1] = -1
         
     
     return rewards, states, actions, wintype, predictions, length 
@@ -175,7 +171,7 @@ def train():
             modelIndex+= 1
         elif len (snake_names) > 0:
             snake0 = Policy()
-            snake0.model.load_weights('models/' + snake_names[-1])
+            #snake0.model.load_weights('models/' + snake_names[-1])
 
         if len (snake_names) > 0:
             snake1.model.load_weights('models/' + snake_names[-1])
