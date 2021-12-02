@@ -72,12 +72,39 @@ def playOneGame(game, snake0, snake1):
     
     return rewards, states, actions, wintype, predictions, length 
 
+def compete(snake0, snake1, game, competitionGames, string_): 
+    gameLengths = []
+    wintypes= []
+    wins = []
+    for x in range(competitionGames):
+        snake0.epsilon = 0.0
+        rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake1)
+        
+        if rewards[0][-1] > rewards[1][-1]: wins.append(1)
+        elif rewards[1][-1] > rewards[0][-1]: wins.append(0) 
+
+        if wintype == 'cornered':
+            wintypes.append(1)
+        else:
+            wintypes.append(0)
+        gameLengths.append(length)
+        print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
+
+    meanLength = np.mean(np.array(gameLengths))
+    meanWinType = np.mean(np.array(wintypes))
+    winRate = np.mean(np.array(wins))
+
+    print(string_ + str(len(gameLengths))+ " # Non-tie Games:" + str(len(wins)) + " Winrate:" + str(winRate)[0:5] + " Avg Length:" + str(meanLength)[0:5] + " Cornering Rate:" + str(meanWinType)[0:5] +   "                                                  ")
+
+    return winRate
+
+
 def train():
     options = [[1,0],[0,1],[-1,0],[0,-1]]
-    games_per_update = 1024
-    competitionGames = 128
-    replayBufferLenth = 1024*64
-    gamma = 0.99
+    games_per_update = 7_500
+    competitionGames = 400
+    replayBufferLenth = 1024*64*8
+    gamma = 0.9
     eps= 0.1
 
     snake0 = Policy(epsilon=eps)
@@ -87,9 +114,6 @@ def train():
     game = SnakeGame(GUI=False)
     modelIndex = len(list(os.listdir('models/'))) 
     losses = []
-    gameLengths = []
-    wintypes= []
-    wins = []
     k = 1
     snake_names = list(os.listdir('models/'))
     snake_names.sort()
@@ -106,21 +130,25 @@ def train():
         ### Play the model Against it'self
         for _ in range(games_per_update):
             snake0.epsilon = eps
-            #rewards, states, actions, wintype, length =  playOneGame(game, snake0, randomOpp)
-            rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake0)
+            if _ % 10 == 0:
+                rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, randomSnake)
+            else:
+                rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake0)
+
 
             k = len(rewards[0])
-            for n in range(2):
-                last = 0
-                for x in range(k):
-                    replayMemory[0].append(states[n][k-x-1])
-                    replayMemory[1].append(actions[n][k-x-1])
-                    replayMemory[2].append(rewards[n][k-x-1] + gamma*last)
-                    last = rewards[n][k-x-1] + gamma*last
-                    #if x < len(rewards[n]) - 1:
-                    #    replayMemory[2].append(rewards[n][x] + gamma*predictions[n][x+1])
-                    #else:
-                    #    replayMemory[2].append(rewards[n][k-x-1])
+            if rewards[0][-1] > rewards[1][-1] and rewards[1][-1] > rewards[0][-1]:
+                for n in range(2):
+                    last = 0
+                    for x in range(k):
+                        replayMemory[0].append(states[n][k-x-1])
+                        replayMemory[1].append(actions[n][k-x-1])
+                        replayMemory[2].append(rewards[n][k-x-1] + gamma*last)
+                        last = rewards[n][k-x-1] + gamma*last
+                        #if x < len(rewards[n]) - 1:
+                        #    replayMemory[2].append(rewards[n][x] + gamma*predictions[n][x+1])
+                        #else:
+                        #    replayMemory[2].append(rewards[n][k-x-1])
 
             print("Done: " + str(_) +    "                                                  ", end='\r')
 
@@ -132,26 +160,9 @@ def train():
 
         snake0.trainModelPredictor(replayMemory[0], replayMemory[1], replayMemory[2])
 
-        for x in range(competitionGames):
-            snake0.epsilon = 0.0
-            rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake1)
-            
-            if rewards[0][-1] > rewards[1][-1]: wins.append(1)
-            elif rewards[1][-1] > rewards[0][-1]: wins.append(0) 
-
-            if wintype == 'cornered':
-                wintypes.append(1)
-            else:
-                wintypes.append(0)
-            gameLengths.append(length)
-            print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
-
-        meanLength = np.mean(np.array(gameLengths))
-        meanWinType = np.mean(np.array(wintypes))
-        winRate = np.mean(np.array(wins))
-
-        print("# Games:" + str(len(gameLengths))+ " # Non-tie Games:" + str(len(wins)) + " Winrate:" + str(winRate)[0:5] + " Avg Length:" + str(meanLength)[0:5] + " Cornering Rate:" + str(meanWinType)[0:5] +   "                                                  ")
-
+        
+        winRate = compete(snake0, randomSnake, game, competitionGames, "VS RANDOM--> # Games ")
+        winRate = compete(snake0, snake1, game, competitionGames, "VS PREVIOUS--> # Games ")
 
         #if winRate > bestWinrate and len(wins) > 100:
         #    bestWinrate = winRate

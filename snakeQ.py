@@ -33,7 +33,7 @@ TODO:
 '''
 
 def switchAgentContext(state0, game):
-    state1 = state0
+    state1 = np.copy(state0)
     state1[:,:,0] = state0[:,:,1]
     state1[:,:,1] = state0[:,:,0]
 
@@ -204,8 +204,8 @@ class SnakeGame():
         valids = self.checkValidActions()
         terminal = False
 
-        reward = -0.1
-        rewardopp = -0.1
+        reward = 0
+        rewardopp = 0
 
         # move heads        
         self.snake0.insert(0, [self.snake0[0][0]+actions[0][0],self.snake0[0][1]+actions[0][1]])
@@ -216,12 +216,12 @@ class SnakeGame():
             self.snake0.pop()
         else:
             self.state[self.snake0[0][0],self.snake0[0][1],self.food] = 0
-            reward = 0.75
+            reward = 0
         if not self.state[self.snake1[0][0],self.snake1[0][1],self.food] == 1:
             self.snake1.pop()
         else:
             self.state[self.snake1[0][0],self.snake1[0][1],self.food] = 0
-            rewardopp = 0.75
+            rewardopp = 0
 
         snake0_dead = self.snake0[0] in self.snake1
         snake1_dead = self.snake1[0] in self.snake0
@@ -243,14 +243,14 @@ class SnakeGame():
         terminal = snake0_dead or snake1_dead
 
         if snake0_dead and not snake1_dead: 
-            reward = -1
+            reward = 0
             rewardopp = 1
         if snake1_dead and not snake0_dead: 
             reward = 1
-            rewardopp = -1
+            rewardopp = 0
         if snake0_dead and snake1_dead: 
-            reward = -0.75
-            rewardopp = -0.75
+            reward = 0
+            rewardopp = 0
 
         if terminal and (len(valids[0])==0 or len(valids[1])==0):
             wintype = 'cornered'

@@ -34,7 +34,7 @@ def Snake_Model():
         return x
 
 
-    input_ = Input(shape=(5,5,8))
+    input_ = Input(shape=(9,9,8))
 
     x = Conv2D(128,1,padding='same')(input_)
     #x = BatchNormalization()(x)
@@ -59,7 +59,7 @@ def Snake_Model():
 
     model = Model(inputs=input_,outputs=x1)
     
-    model.compile(loss='mse', optimizer=Adam(learning_rate=1e-3))
+    model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=1e-3))
     return model
 
 class Policy():
@@ -82,15 +82,23 @@ class Policy():
         input_mod = state
         #print(input_mod[:,:,0])
 
-        input_mod = np.rot90(input_mod,options.index(action), axes=(0,1))
+        NewInput = np.zeros((9,9,8))
+
+        headLayer = input_mod[:,:,0]
+
+        headpos = np.unravel_index(np.argmax(headLayer),headLayer.shape)
+
+        NewInput[4-headpos[0]:9-headpos[0],4-headpos[1]:9-headpos[1],:] = input_mod 
+
+        NewInput = np.rot90(NewInput,options.index(action), axes=(0,1))
 
         #print(input_mod[:,:,0])
 
-        if np.isnan(np.sum(input_mod)):
+        if np.isnan(np.sum(NewInput)):
             print("NAN FOUNDS") 
 
-        input_mod = np.clip(input_mod, 0, 1)     
-        return input_mod
+        NewInput = np.clip(NewInput, 0, 1)     
+        return NewInput
 
     def getAction(self, state, valids):
         if len(valids) == 0:
