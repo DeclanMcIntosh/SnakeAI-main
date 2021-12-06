@@ -1,6 +1,5 @@
 import os
 from re import L
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 from tensorflow.python.keras.backend_config import epsilon
 from snakeQ import *
@@ -15,6 +14,7 @@ import random as r
 import os
 
 import time
+
 
     
 def playOneGame(game, snake0, snake1):
@@ -39,19 +39,13 @@ def playOneGame(game, snake0, snake1):
 
         #t0 = time.time()
 
-        for x in range(8):
-            print(x)
-            print(state0[:,:,x])
-
         action0, prediction0 = snake0.getAction(state0, valids[0])
         action1, prediction1 = snake1.getAction(state1, valids[1])
         
         #print(str((time.time()-t0)))
 
-        if len(valids[0]) > 0: action0 = r.choice(valids[0])
-        else: action0 = [0,0]
-        if len(valids[1]) > 0: action1 = r.choice(valids[1])
-        else: action1 = [0,0]
+        if len(valids[0]) == 0: action0 = [0,0]
+        if len(valids[1]) == 0: action1 = [0,0]
         
         if action0 in options:
             states[0].append(state0)
@@ -101,8 +95,8 @@ def compete(snake0, snake1, game, competitionGames, string_):
 
 def train():
     options = [[1,0],[0,1],[-1,0],[0,-1]]
-    games_per_update = 256
-    competitionGames = 400
+    games_per_update = 2_500
+    competitionGames = 250
     replayBufferLenth = 1024*64*8
     gamma = 1
     eps= 0.1
@@ -130,14 +124,14 @@ def train():
         ### Play the model Against it'self
         for _ in range(games_per_update):
             snake0.epsilon = eps
-            if _ % 1 == 0:
+            if _ % 10 == 0:
                 rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, randomSnake)
             else:
                 rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake0)
 
 
             k = len(rewards[0])
-            if rewards[0][-1] > rewards[1][-1] or rewards[1][-1] > rewards[0][-1]:
+            if rewards[0][-1] > rewards[1][-1] or rewards[1][-1] > rewards[0][-1] or True: # Force to train only on wins or loses
                 for n in range(2):
                     last = 0
                     for x in range(k):
@@ -162,7 +156,7 @@ def train():
 
         
         winRate = compete(snake0, randomSnake, game, competitionGames, "VS RANDOM--> # Games ")
-        #winRate = compete(snake0, snake1, game, competitionGames, "VS PREVIOUS--> # Games ")
+        winRate = compete(snake0, snake1, game, competitionGames, "VS PREVIOUS--> # Games ")
 
         #if winRate > bestWinrate and len(wins) > 100:
         #    bestWinrate = winRate
@@ -174,8 +168,8 @@ def train():
             snake0.model.save('models/bestModel_rev' + str(modelIndex) + '.h5')
             modelIndex+= 1
         elif len (snake_names) > 0:
-            snake0 = Policy()
-            #snake0.model.load_weights('models/' + snake_names[-1])
+            #snake0 = Policy()
+            snake0.model.load_weights('models/' + snake_names[-1])
 
         if len (snake_names) > 0:
             snake1.model.load_weights('models/' + snake_names[-1])

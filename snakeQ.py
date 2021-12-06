@@ -340,11 +340,11 @@ class SnakeGame():
 if __name__ == '__main__':
 
     opp = Policy(0.0)
-    opp.model = load_model('models/bestModel_rev0.h5')
+    opp.model = load_model('models/bestModel_rev13.h5')
     opp.compile()
 
     opp1 = Policy(0.0)
-    opp1.model = load_model('models/bestModel_rev0.h5')
+    opp1.model = load_model('models/bestModel_rev13.h5')
     opp1.compile()
 
     test = SnakeGame(animationTime=100, player2=RandomOponant(), player1=opp)

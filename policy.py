@@ -1,6 +1,7 @@
 import random as r
 import time
 import numpy as np
+import tensorflow as tf
 from tensorflow.python.keras.backend import binary_crossentropy
 
 from tensorflow.python.keras.backend_config import epsilon
@@ -18,6 +19,7 @@ from tensorflow.keras.optimizers import SGD, Adam
 import numpy as np
 
 import random as r
+
 
 
 def Snake_Model():
@@ -72,25 +74,33 @@ def Snake_Model_DQN():
 
     def residual(x, channels):
         x1 = Conv2D(channels, 3, padding='same')(x)
-        #x1 = BatchNormalization()(x1)
+        x1 = BatchNormalization()(x1)
         x1 = ReLU()(x1)     
         x1 = Conv2D(channels, 3, padding='same')(x1)
-        #x1 = BatchNormalization()(x1)     
+        x1 = BatchNormalization()(x1)     
         x = Add()([x,x1])
         x = ReLU()(x)
         return x
 
 
+
     input_ = Input(shape=(9,9,8))
 
-    x = Conv2D(128,1,padding='same')(input_)
-    #x = BatchNormalization()(x)
+    x = Conv2D(256,1,padding='same')(input_)
+    x = BatchNormalization()(x)
     x = ReLU()(x)     
-    x = residual(x, 128)
-    x = residual(x, 128)
-    x = residual(x, 128)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
 
-    x1 = Conv2D(2,1,padding='same')(x)
+    x1 = Conv2D(16,1,padding='same')(x)
     x1 = Flatten()(x1)
     x1 = Dense(1024)(x1)
     x1 = ReLU()(x1) 
@@ -106,14 +116,12 @@ def Snake_Model_DQN():
 
     model = Model(inputs=input_,outputs=x1)
     
-    model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=1e-3))
+    model.compile(loss='mse', optimizer=Adam(learning_rate=1e-3))
     return model
 
 class Policy():
-    def __init__(self, epsilon=0.0, gamma=0.95, board_size=5, snakeModel=Snake_Model):
+    def __init__(self, epsilon=0.0, snakeModel=Snake_Model):
         self.epsilon = epsilon
-        self.gamma = gamma
-        self.board_size = board_size
         self.model = snakeModel()
 
         self.historyStates = []
@@ -165,13 +173,13 @@ class Policy():
 
         input_mods = [np.expand_dims(self.createModelInput(state, valids[0]),axis=0)]
 
-        for action in valids[:]:
+        for action in valids[1:]:
             k = self.createModelInput(state, action)
             input_mods.append(np.expand_dims(self.createModelInput(state, action),axis=0))
 
-            for x in range(8):
-                print(x)
-                print(k[:,:,x])
+            #for x in range(8):
+            #    print(x)
+            #    print(k[:,:,x])
 
         input_mods = np.concatenate(input_mods, axis=0)
             
@@ -194,9 +202,11 @@ class Policy():
 
         #return action, prediction
 
-        
+        if self.epsilon == 0:
+            return action, prediction
 
         #weighted roullet wheel of choices
+        
         estimates = estimates + 1e-6
         estimates = estimates/np.sum(estimates)
         return r.choices(valids, k=1, weights=estimates)[0],  prediction
@@ -228,7 +238,7 @@ class Policy():
 
         es = EarlyStopping(monitor='val_loss', restore_best_weights=True)
 
-        self.model.fit(inputs, rewards, batch_size=16, validation_split =0.1, callbacks=[es], epochs=100, workers=4)
+        self.model.fit(inputs, rewards, batch_size=16, validation_split =0.1, callbacks=[es], epochs=100, workers=4, verbose=0)
 
 class RandomOponant():
     def __init__(self):
