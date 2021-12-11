@@ -12,6 +12,7 @@ import numpy as np
 
 import random as r
 import os
+import sys
 
 import time
 
@@ -66,11 +67,12 @@ def playOneGame(game, snake0, snake1):
     
     return rewards, states, actions, wintype, predictions, length 
 
-def compete(snake0, snake1, game, competitionGames, string_): 
+def compete(snake0, snake1s, game, competitionGames, string_, f): 
     gameLengths = []
     wintypes= []
     wins = []
     for x in range(competitionGames):
+        snake1 = r.choice(snake1s)
         snake0.epsilon = 0.0
         rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake1)
         
@@ -82,7 +84,7 @@ def compete(snake0, snake1, game, competitionGames, string_):
         else:
             wintypes.append(0)
         gameLengths.append(length)
-        print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
+    #print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
 
     meanLength = np.mean(np.array(gameLengths))
     meanWinType = np.mean(np.array(wintypes))
@@ -90,19 +92,24 @@ def compete(snake0, snake1, game, competitionGames, string_):
 
     print(string_ + str(len(gameLengths))+ " # Non-tie Games:" + str(len(wins)) + " Winrate:" + str(winRate)[0:5] + " Avg Length:" + str(meanLength)[0:5] + " Cornering Rate:" + str(meanWinType)[0:5] +   "                                                  ")
 
+    with open(f, 'a+') as fileRef:
+        fileRef.write(string_ + str(len(gameLengths))+ " # Non-tie Games:" + str(len(wins)) + " Winrate:" + str(winRate)[0:5] + " Avg Length:" + str(meanLength)[0:5] + " Cornering Rate:" + str(meanWinType)[0:5] + "\n")
+
     return winRate
 
 
-def train():
+def train(f):
     options = [[1,0],[0,1],[-1,0],[0,-1]]
-    games_per_update = 2_500
-    competitionGames = 250
+    games_per_update = 512
+    competitionGames = 128
     replayBufferLenth = 1024*64*8
     gamma = 1
     eps= 0.1
+    fails = 0
 
     snake0 = Policy(epsilon=eps)
     snake1 = Policy()
+    prevSnakes = [Policy(),Policy(),Policy(),Policy(),Policy()]
     randomSnake = RandomOponant()
     #snake1s = [RandomOponant(), RandomOponant(), RandomOponant()] 
     game = SnakeGame(GUI=False)
@@ -116,6 +123,9 @@ def train():
     if len (snake_names) > 0:
         snake1.model.load_weights('models/' + snake_names[-1])
 
+        for x in range(min([len(prevSnakes), len(snake_names)])):
+            prevSnakes[x].model.load_weights('models/' + snake_names[-(x+1)])
+
     replayMemory = [[], [], []]
 
 
@@ -124,8 +134,8 @@ def train():
         ### Play the model Against it'self
         for _ in range(games_per_update):
             snake0.epsilon = eps
-            if _ % 10 == 0:
-                rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, randomSnake)
+            if _ % 5 == 0:
+                rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, r.choice(prevSnakes))
             else:
                 rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake0)
 
@@ -155,24 +165,39 @@ def train():
         snake0.trainModelPredictor(replayMemory[0], replayMemory[1], replayMemory[2])
 
         
-        winRate = compete(snake0, randomSnake, game, competitionGames, "VS RANDOM--> # Games ")
-        winRate = compete(snake0, snake1, game, competitionGames, "VS PREVIOUS--> # Games ")
+        winRate1 = compete(snake0, [randomSnake], game, competitionGames, "VS RANDOM--> # Games ", f)
+        winRate2 = compete(snake0, prevSnakes, game, competitionGames, "VS 3 PREVIOUS--> # Games ", f)
+        winRate3 = compete(snake0, [snake1], game, competitionGames, "VS PREVIOUS Best--> # Games ", f)
 
         #if winRate > bestWinrate and len(wins) > 100:
         #    bestWinrate = winRate
         snake_names = os.listdir('models/')
-        if winRate >= 0.55:
+        if winRate3 >= 0.55 and winRate2 >= 0.55:
             # Flush memory 
             replayMemory = [[], [], []]
+            with open(f, 'a+') as fileRef:
+                fileRef.write("Saving good Model\n")
             print("Saving good Model")
             snake0.model.save('models/bestModel_rev' + str(modelIndex) + '.h5')
             modelIndex+= 1
+            fails = 0
         elif len (snake_names) > 0:
             #snake0 = Policy()
             snake0.model.load_weights('models/' + snake_names[-1])
+            fails += 1
+        
+        if fails > 4:
+            with open(f, 'a+') as fileRef:
+                fileRef.write("Model Seems Stuck Reseting to Random Weights\n")
+            print("Model Seems Stuck Reseting to Random Weights")
+            snake0 = Policy(epsilon=eps)
+            fails = 0
+
 
         if len (snake_names) > 0:
             snake1.model.load_weights('models/' + snake_names[-1])
+            for x in range(min([len(prevSnakes), len(snake_names)])):
+                prevSnakes[x].model.load_weights('models/' +snake_names[-(x+1)])
 
         gameLengths = []
         wintypes= []
@@ -182,4 +207,9 @@ def train():
 
 
 if __name__ == '__main__':
-    train()
+    f = 'logs0.txt'
+    #sys.stdout = f
+    print("starting")
+    with open(f, 'a+') as fileRef:
+        fileRef.write("starting\n")
+    train(f)

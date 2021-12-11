@@ -50,11 +50,14 @@ def Snake_Model():
     x = residual(x, 256)
     x = residual(x, 256)
     x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
+    x = residual(x, 256)
 
-    x1 = Conv2D(16,1,padding='same')(x)
+    x1 = Conv2D(512,5, padding='valid')(x)
+    x1 = BatchNormalization()(x1)
+    x1 = ReLU()(x1)
     x1 = Flatten()(x1)
-    x1 = Dense(1024)(x1)
-    x1 = ReLU()(x1) 
     x1 = Dense(1)(x1)
     x1 = Activation('sigmoid')(x1) # critic
 
@@ -67,7 +70,7 @@ def Snake_Model():
 
     model = Model(inputs=input_,outputs=x1)
     
-    model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=1e-3))
+    model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=1e-4))
     return model
 
 def Snake_Model_DQN():
@@ -200,9 +203,10 @@ class Policy():
 
         #print(str((time.time()-t0)))
 
-        #return action, prediction
+        if False: # set to true for eps-greedy
+            return action, prediction
 
-        if self.epsilon == 0:
+        if self.epsilon == 0.0: # if esilon is zero just be greedy
             return action, prediction
 
         #weighted roullet wheel of choices
