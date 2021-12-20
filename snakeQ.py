@@ -23,13 +23,6 @@ import numpy as np
 
 import random as r
 
-'''
-TODO:
-- make game logic # DONE 
-- make random oponant (generic class interface) # DONE 
-- move GUI to openCV to make it work threaded 
-- average game length for two random actors is 154.42 moves.
-'''
 
 def switchAgentContext(state0, game):
     state1 = np.copy(state0)
@@ -42,7 +35,6 @@ def switchAgentContext(state0, game):
         state1[:,:,7] = np.zeros(shape=(game.boardSize,game.boardSize))
 
     return state1
-
 
 
 class SnakeGame():
@@ -182,27 +174,9 @@ class SnakeGame():
 
         valids0 = checkSnake(self.state,self.snake0)
         valids1 = checkSnake(self.state,self.snake1)
-        
-        #invalid0 = []
-        #invalid1 = []
-        #for valid0 in valids0:
-        #    for valid1 in valids1:
-        #        if self.snake0[0][0] + valid0[0] == self.snake1[0][0] + valid1[0]:
-        #            if self.snake0[0][1] + valid0[1] == self.snake1[0][1] + valid1[1]:
-        #                invalid0.append(valid0)
-        #                invalid1.append(valid1)
-        #
-        #if len(self.snake0) <= len(self.snake1):
-        #    if len(valids0) != len(invalid0):
-        #        valids0 = [x for x in valids0 if x not in invalid0]
-        #elif len(self.snake1) <= len(self.snake0):
-        #    if len(valids1) != len(invalid1):
-        #        valids1 = [x for x in valids1 if x not in invalid1]
-
 
         valids = [valids0,valids1]
 
-        #print(valids)
 
         return valids
 
@@ -304,33 +278,28 @@ class SnakeGame():
         self.wait = True
         var = IntVar()
         self.root.after(self.animationTime, var.set, 1)
-        #print("waiting...")
         self.root.wait_variable(var)
         self.wait = False
 
-    def button(self, frame, color=None):#Function to define a button
+    def button(self, frame, color=None):
         if color == None:
-            button_=Button(frame,padx=1,bg="papaya whip",width=5,height=1,text="   ",font=('arial',80,'bold'),relief="sunken",bd=5)
+            button_=Button(frame,padx=1,bg="papaya whip",width=4,height=1,text="   ",font=('arial',30,'bold'),relief="sunken",bd=5)
         else:
-            button_=Button(frame,padx=1,bg=color,width=5,height=1,text="   ",font=('arial',80,'bold'),relief="sunken",bd=5)
+            button_=Button(frame,padx=1,bg=color,width=4,height=1,text="   ",font=('arial',30,'bold'),relief="sunken",bd=5)
         return button_
     
     def click(self,row,col):
-        #self.b[row][col].config(text= str(self.toAct),state=DISABLED,disabledforeground=self.colour[ self.toAct])
         action = self.convertPositionToAction(row,col)
         valids = self.checkValidActions()[0]
-        secondState= switchAgentContext(self.state, self)
+        secondState = switchAgentContext(self.state, self)
         if action in valids:
             if not self.player1 is None and not self.player2 is None:
                 while True:
                     self.waithere()
                     ok_moves = self.checkValidActions()
-                    #print(ok_moves)
-                    #print("now getting actions")
                     action0, _ = self.player1.getAction(self.state, ok_moves[0])
+                    secondState = switchAgentContext(self.state, self)
                     action1, _ = self.player2.getAction(secondState, ok_moves[1])
-
-                    #print(action0, action1)
                     self.step([action0,action1])
             else:
                 actionmodel, _ = self.player1.getAction(secondState, self.checkValidActions()[1])
@@ -340,23 +309,14 @@ class SnakeGame():
 if __name__ == '__main__':
 
     opp = Policy(0.0)
-    opp.model = load_model('modelsRoullet/bestModel_rev22.h5')
+    opp.model = load_model('models/bestModel_rev033.h5')
     opp.compile()
 
     opp1 = Policy(0.0)
-    opp1.model = load_model('models/bestModel_rev44.h5')
+    opp1.model = load_model('models/bestModel_rev033.h5')
     opp1.compile()
 
-    test = SnakeGame(animationTime=10, player1=opp1,)
+    test = SnakeGame(animationTime=500, player1=opp1,player2=opp1)
     #test = SnakeGame(animationTime=750, player2=RandomOponant(), player1=RandomOponant())
     #test = SnakeGame(animationTime=1000)
     #test.checkValidActions()
-
-
-'''
-
-Notes on size of problem 
-
-You have 7 pieces total, so your bench can be any combination from 7-n to zero where n is the number of pieces on the board for any configuration 
-
-'''

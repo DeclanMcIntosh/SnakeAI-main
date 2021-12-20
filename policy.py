@@ -43,16 +43,6 @@ def Snake_Model():
     x = residual(x, 256)
     x = residual(x, 256)
     x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
 
     x1 = Conv2D(512,5, padding='valid')(x)
     x1 = BatchNormalization()(x1)
@@ -73,59 +63,12 @@ def Snake_Model():
     model.compile(loss='binary_crossentropy', optimizer=Adam(learning_rate=1e-4))
     return model
 
-def Snake_Model_DQN():
-
-    def residual(x, channels):
-        x1 = Conv2D(channels, 3, padding='same')(x)
-        x1 = BatchNormalization()(x1)
-        x1 = ReLU()(x1)     
-        x1 = Conv2D(channels, 3, padding='same')(x1)
-        x1 = BatchNormalization()(x1)     
-        x = Add()([x,x1])
-        x = ReLU()(x)
-        return x
-
-
-
-    input_ = Input(shape=(9,9,8))
-
-    x = Conv2D(256,1,padding='same')(input_)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)     
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-    x = residual(x, 256)
-
-    x1 = Conv2D(16,1,padding='same')(x)
-    x1 = Flatten()(x1)
-    x1 = Dense(1024)(x1)
-    x1 = ReLU()(x1) 
-    x1 = Dense(1)(x1)
-    x1 = Activation('tanh')(x1) # critic
-
-    #x2 = Conv2D(2,1,padding='same')(x)
-    #x2 = Flatten()(x2)
-    #x2 = Dense(128)(x2)
-    #x2 = ReLU()(x2) 
-    #x2 = Dense(1)(x2)
-    #x2 = Activation('sigmoid')(x2) # actor
-
-    model = Model(inputs=input_,outputs=x1)
-    
-    model.compile(loss='mse', optimizer=Adam(learning_rate=1e-3))
-    return model
-
 class Policy():
     def __init__(self, epsilon=0.0, snakeModel=Snake_Model):
         self.epsilon = epsilon
         self.model = snakeModel()
+
+        print(self.model.summary())
 
         self.historyStates = []
         self.historyActions = []
@@ -138,7 +81,6 @@ class Policy():
         options = [[1,0],[0,1],[-1,0],[0,-1]]
 
         input_mod = state
-        #print(input_mod[:,:,0])
 
         NewInput = np.zeros((9,9,8))
 
@@ -157,7 +99,6 @@ class Policy():
             NewInput[:,:,4] = temp[:,:,3]
             NewInput[:,:,5] = temp[:,:,4]
 
-        #print(input_mod[:,:,0])
 
         if np.isnan(np.sum(NewInput)):
             print("NAN FOUNDS") 
@@ -172,17 +113,11 @@ class Policy():
             return valids[0], 0
 
 
-        #t0 = time.time()
-
         input_mods = [np.expand_dims(self.createModelInput(state, valids[0]),axis=0)]
 
         for action in valids[1:]:
             k = self.createModelInput(state, action)
             input_mods.append(np.expand_dims(self.createModelInput(state, action),axis=0))
-
-            #for x in range(8):
-            #    print(x)
-            #    print(k[:,:,x])
 
         input_mods = np.concatenate(input_mods, axis=0)
             
@@ -200,8 +135,6 @@ class Policy():
             action = valids[index]
         else:
             action = r.choice(valids)
-
-        #print(str((time.time()-t0)))
 
         if False: # set to true for eps-greedy
             return action, prediction
@@ -225,10 +158,6 @@ class Policy():
         r.shuffle(c)   
         states, actions, rewards = zip(*c)
 
-        #states  = states[-16:]
-        #actions = actions[-16:]
-        #rewards = rewards[-16:]
-
         rewards = np.expand_dims(np.array(rewards,dtype=np.float32),1)/25.
 
         rewards = np.clip(rewards, -1, 1)
@@ -248,7 +177,6 @@ class RandomOponant():
     def __init__(self):
         pass
     def getAction(self, state, valids):
-        #print(valids)
         if len(valids) > 0:
             x = r.choice(valids)
             return x, 0

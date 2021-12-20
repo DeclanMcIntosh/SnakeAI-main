@@ -35,15 +35,15 @@ def playOneGame(game, snake0, snake1):
     
     while not terminal:
     
+        if length > 128:
+            terminal = True
+
         length += 1
         state1 = switchAgentContext(state0, game)
-
-        #t0 = time.time()
 
         action0, prediction0 = snake0.getAction(state0, valids[0])
         action1, prediction1 = snake1.getAction(state1, valids[1])
         
-        #print(str((time.time()-t0)))
 
         if len(valids[0]) == 0: action0 = [0,0]
         if len(valids[1]) == 0: action1 = [0,0]
@@ -63,6 +63,9 @@ def playOneGame(game, snake0, snake1):
 
         rewards[0].append(reward0)
         rewards[1].append(reward1)
+
+        if length > 128:
+            terminal = True
         
     
     return rewards, states, actions, wintype, predictions, length 
@@ -84,7 +87,7 @@ def compete(snake0, snake1s, game, competitionGames, string_, f):
         else:
             wintypes.append(0)
         gameLengths.append(length)
-    #print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
+    print("Done Competition Games: " + str(x) +    "                                                  ", end='\r')
 
     meanLength = np.mean(np.array(gameLengths))
     meanWinType = np.mean(np.array(wintypes))
@@ -100,8 +103,8 @@ def compete(snake0, snake1s, game, competitionGames, string_, f):
 
 def train(f):
     options = [[1,0],[0,1],[-1,0],[0,-1]]
-    games_per_update = 512
-    competitionGames = 128
+    games_per_update = 2500
+    competitionGames = 256
     replayBufferLenth = 1024*64*8
     gamma = 1
     eps= 0.1
@@ -109,12 +112,10 @@ def train(f):
 
     snake0 = Policy(epsilon=eps)
     snake1 = Policy()
-    prevSnakes = [Policy(),Policy(),Policy(),Policy(),Policy()]
+    prevSnakes = [Policy(),Policy(),Policy()]
     randomSnake = RandomOponant()
-    #snake1s = [RandomOponant(), RandomOponant(), RandomOponant()] 
     game = SnakeGame(GUI=False)
     modelIndex = len(list(os.listdir('models/'))) 
-    losses = []
     k = 1
     snake_names = list(os.listdir('models/'))
     snake_names.sort()
@@ -124,6 +125,7 @@ def train(f):
         snake1.model.load_weights('models/' + snake_names[-1])
 
         for x in range(min([len(prevSnakes), len(snake_names)])):
+            print(snake_names[-(x+1)])
             prevSnakes[x].model.load_weights('models/' + snake_names[-(x+1)])
 
     replayMemory = [[], [], []]
@@ -136,6 +138,8 @@ def train(f):
             snake0.epsilon = eps
             if _ % 5 == 0:
                 rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, r.choice(prevSnakes))
+            elif (_ + 1 ) % 10 == 0:
+                rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, randomSnake)
             else:
                 rewards, states, actions, wintype, predictions, length =  playOneGame(game, snake0, snake0)
 
@@ -149,18 +153,8 @@ def train(f):
                         replayMemory[1].append(actions[n][k-x-1])
                         replayMemory[2].append(rewards[n][k-x-1] + gamma*last)
                         last = rewards[n][k-x-1] + gamma*last
-                        #if x < len(rewards[n]) - 1:
-                        #    replayMemory[2].append(rewards[n][x] + gamma*predictions[n][x+1])
-                        #else:
-                        #    replayMemory[2].append(rewards[n][k-x-1])
 
             print("Done: " + str(_) +    "                                                  ", end='\r')
-
-        # Train the model on the experince
-
-        #replayMemory[0] = replayMemory[0][-replayBufferLenth:] 
-        #replayMemory[1] = replayMemory[1][-replayBufferLenth:] 
-        #replayMemory[2] = replayMemory[2][-replayBufferLenth:] 
 
         snake0.trainModelPredictor(replayMemory[0], replayMemory[1], replayMemory[2])
 
@@ -169,8 +163,6 @@ def train(f):
         winRate2 = compete(snake0, prevSnakes, game, competitionGames, "VS 3 PREVIOUS--> # Games ", f)
         winRate3 = compete(snake0, [snake1], game, competitionGames, "VS PREVIOUS Best--> # Games ", f)
 
-        #if winRate > bestWinrate and len(wins) > 100:
-        #    bestWinrate = winRate
         snake_names = os.listdir('models/')
         if winRate3 >= 0.55 and winRate2 >= 0.55:
             # Flush memory 
@@ -178,11 +170,11 @@ def train(f):
             with open(f, 'a+') as fileRef:
                 fileRef.write("Saving good Model\n")
             print("Saving good Model")
-            snake0.model.save('models/bestModel_rev' + str(modelIndex) + '.h5')
+            snake0.model.save('models/bestModel_rev' + format(modelIndex, '03d') + '.h5')
             modelIndex+= 1
             fails = 0
         elif len (snake_names) > 0:
-            #snake0 = Policy()
+            snake0 = Policy()
             snake0.model.load_weights('models/' + snake_names[-1])
             fails += 1
         
@@ -208,7 +200,6 @@ def train(f):
 
 if __name__ == '__main__':
     f = 'logs0.txt'
-    #sys.stdout = f
     print("starting")
     with open(f, 'a+') as fileRef:
         fileRef.write("starting\n")
